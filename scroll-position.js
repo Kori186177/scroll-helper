@@ -1,46 +1,52 @@
 (function () {
-  const SCROLL_KEY = 'savedScrollY';
-  let lastSavedY = 0;
-  let ticking = false;
+  const SCROLL_KEY = 'scrollY';
+  const SCROLL_RESTORED_KEY = 'scrollRestored';
 
   console.log('[Scroll] Script loaded');
 
-  // Save scroll position (throttled with requestAnimationFrame)
-  function onScroll() {
-    if (!ticking) {
-      window.requestAnimationFrame(() => {
-        lastSavedY = window.scrollY;
-        sessionStorage.setItem(SCROLL_KEY, lastSavedY);
-        console.log('[Scroll] Stored scrollY:', lastSavedY);
-        ticking = false;
-      });
-      ticking = true;
-    }
+  function shouldScroll() {
+    const scrollHeight = document.documentElement.scrollHeight;
+    const clientHeight = document.documentElement.clientHeight;
+    const needScroll = scrollHeight > clientHeight;
+    console.log(`[Scroll] ScrollHeight: ${scrollHeight}, ClientHeight: ${clientHeight}, Need to scroll: ${needScroll}`);
+    return needScroll;
   }
 
-  // Restore scroll position
-  function restoreScroll() {
-    const savedY = sessionStorage.getItem(SCROLL_KEY);
+  function saveScrollPosition() {
+    sessionStorage.setItem(SCROLL_KEY, window.scrollY);
+    console.log(`[Scroll] ScrollY saved: ${window.scrollY}`);
+  }
+
+  function restoreScrollPosition() {
     console.log('[Scroll] Attempting to restore scrollY from sessionStorage');
-    if (savedY !== null) {
-      const y = parseInt(savedY, 10);
-      console.log('[Scroll] Restoring scrollY to:', y);
-      window.scrollTo(0, y);
+
+    const alreadyRestored = sessionStorage.getItem(SCROLL_RESTORED_KEY);
+    if (alreadyRestored) {
+      console.log('[Scroll] Scroll restoration already attempted. Skipping.');
+      return;
+    }
+
+    const scrollY = sessionStorage.getItem(SCROLL_KEY);
+    if (scrollY !== null) {
+      console.log(`[Scroll] Found scrollY in sessionStorage: ${scrollY}`);
+      window.scrollTo(0, parseInt(scrollY, 10));
+      sessionStorage.setItem(SCROLL_RESTORED_KEY, 'true');
+      console.log('[Scroll] Scroll restored and flag set.');
     } else {
       console.log('[Scroll] No scrollY value found in sessionStorage');
     }
   }
 
-  // Restore scroll on full page load
-  window.addEventListener('load', () => {
-    console.log('[Scroll] Page loaded');
-    restoreScroll();
-  });
-
-  // Start saving scroll on scroll event
   window.addEventListener('scroll', () => {
-    console.log('[Scroll] Scroll event detected');
-    onScroll();
+    saveScrollPosition();
   });
 
+  document.addEventListener('DOMContentLoaded', () => {
+    console.log('[Scroll] DOMContentLoaded');
+    if (shouldScroll()) {
+      restoreScrollPosition();
+    } else {
+      console.log('[Scroll] Page not scrollable, skipping scroll restoration');
+    }
+  });
 })();
