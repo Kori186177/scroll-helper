@@ -1,26 +1,46 @@
-// Save scroll position frequently (e.g., every scroll)
-window.addEventListener('scroll', () => {
-  sessionStorage.setItem('scrollY', window.scrollY);
-});
+(function () {
+  const SCROLL_KEY = 'savedScrollY';
+  let lastSavedY = 0;
+  let ticking = false;
 
-// Restore scroll position on load
-window.addEventListener('load', () => {
-  const y = sessionStorage.getItem('scrollY');
-  if (y !== null) {
-    window.scrollTo(0, parseInt(y, 10));
+  console.log('[Scroll] Script loaded');
+
+  // Save scroll position (throttled with requestAnimationFrame)
+  function onScroll() {
+    if (!ticking) {
+      window.requestAnimationFrame(() => {
+        lastSavedY = window.scrollY;
+        sessionStorage.setItem(SCROLL_KEY, lastSavedY);
+        console.log('[Scroll] Stored scrollY:', lastSavedY);
+        ticking = false;
+      });
+      ticking = true;
+    }
   }
-});
 
-window.addEventListener('scroll', () => {
-  const y = window.scrollY;
-  localStorage.setItem('scrollY', y);
-  console.log('Saving scrollY:', y);
-});
-
-window.addEventListener('load', () => {
-  const y = localStorage.getItem('scrollY');
-  console.log('Restoring scrollY:', y);
-  if (y !== null) {
-    window.scrollTo(0, parseInt(y, 10));
+  // Restore scroll position
+  function restoreScroll() {
+    const savedY = sessionStorage.getItem(SCROLL_KEY);
+    console.log('[Scroll] Attempting to restore scrollY from sessionStorage');
+    if (savedY !== null) {
+      const y = parseInt(savedY, 10);
+      console.log('[Scroll] Restoring scrollY to:', y);
+      window.scrollTo(0, y);
+    } else {
+      console.log('[Scroll] No scrollY value found in sessionStorage');
+    }
   }
-});
+
+  // Restore scroll on full page load
+  window.addEventListener('load', () => {
+    console.log('[Scroll] Page loaded');
+    restoreScroll();
+  });
+
+  // Start saving scroll on scroll event
+  window.addEventListener('scroll', () => {
+    console.log('[Scroll] Scroll event detected');
+    onScroll();
+  });
+
+})();
