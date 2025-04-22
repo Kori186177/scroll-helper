@@ -1,6 +1,8 @@
 (function () {
   const SCROLL_KEY = 'scrollY';
   const SCROLL_RESTORED_KEY = 'scrollRestored';
+  const MAX_ATTEMPTS = 5;
+  const RETRY_DELAY = 300; // ms
 
   console.log('[Scroll] Script loaded');
 
@@ -17,36 +19,34 @@
     console.log(`[Scroll] ScrollY saved: ${window.scrollY}`);
   }
 
-  function restoreScrollPosition() {
-    console.log('[Scroll] Attempting to restore scrollY from sessionStorage');
+  function tryRestoreScroll(attempt = 1) {
+    if (sessionStorage.getItem(SCROLL_RESTORED_KEY)) {
+      console.log(`[Scroll] Scroll already restored. Skipping attempt ${attempt}`);
+      return;
+    }
 
-    const alreadyRestored = sessionStorage.getItem(SCROLL_RESTORED_KEY);
-    if (alreadyRestored) {
-      console.log('[Scroll] Scroll restoration already attempted. Skipping.');
+    if (!shouldScroll()) {
+      console.log(`[Scroll] Attempt ${attempt}: Not scrollable yet, retrying...`);
+      if (attempt < MAX_ATTEMPTS) {
+        setTimeout(() => tryRestoreScroll(attempt + 1), RETRY_DELAY);
+      }
       return;
     }
 
     const scrollY = sessionStorage.getItem(SCROLL_KEY);
     if (scrollY !== null) {
-      console.log(`[Scroll] Found scrollY in sessionStorage: ${scrollY}`);
+      console.log(`[Scroll] Restoring scroll to Y=${scrollY} on attempt ${attempt}`);
       window.scrollTo(0, parseInt(scrollY, 10));
       sessionStorage.setItem(SCROLL_RESTORED_KEY, 'true');
-      console.log('[Scroll] Scroll restored and flag set.');
     } else {
-      console.log('[Scroll] No scrollY value found in sessionStorage');
+      console.log(`[Scroll] Attempt ${attempt}: No scrollY found in sessionStorage`);
     }
   }
 
-  window.addEventListener('scroll', () => {
-    saveScrollPosition();
-  });
+  window.addEventListener('scroll', saveScrollPosition);
 
   document.addEventListener('DOMContentLoaded', () => {
-    console.log('[Scroll] DOMContentLoaded');
-    if (shouldScroll()) {
-      restoreScrollPosition();
-    } else {
-      console.log('[Scroll] Page not scrollable, skipping scroll restoration');
-    }
+    console.log('[Scroll] DOMContentLoaded, starting scroll restoration attempts...');
+    setTimeout(() => tryRestoreScroll(), RETRY_DELAY);
   });
 })();
